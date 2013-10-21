@@ -1,0 +1,258 @@
+#! /usr/bin/python
+'''
+    EVENTCMD -
+    This script is meant to respond to external 'eventcmd' calls from
+    the mcabber command-line jabber client.
+'''
+import sys
+import re
+import random
+
+import string
+import smtplib
+
+from os import remove, system
+from gntp.notifier import mini
+
+import logging  # this is necessary to handle GNTP errors
+logging.basicConfig(level=logging.ERROR)
+
+
+'''
+    CONFIG -
+    Set global values here
+'''
+debug = False
+my_name = "dep"
+gmail_user = "dannypeck@gmail.com"
+gmail_from = "dannypeck+alert@gmail.com"
+gmail_pass = "gmailpassword"
+icon_dir = "/Users/dannypeck/.mcabber/icons"
+
+'''
+    Main functionality -
+
+    This section defines two core classes which make up the core
+    functionality of this script:
+
+    Message
+        parses command-line input and converts it into an object to be
+        processed by handlers (defined later)
+    MessageHander
+        defines a list that holds the handlers you will define later
+'''
+
+class MessageHandler(list):
+    ''' Decorator list for message handlers '''
+    def __call__(self, types=['IN', 'MUC', 'STATUS'], **kwargs):
+        def decorator(fn):
+            fn.types = types
+            self.append(fn)
+            return fn
+        return decorator
+
+    def process_events(self, message):
+        for fn in self:
+            if message.kind in fn.types:
+                fn(message)
+
+
+handler = MessageHandler()
+
+
+class Message(object):
+
+    # member properties
+    text = ""
+    sender = ""
+    sticky = False
+
+    def __init__(self):
+        self.args = sys.argv
+        self.kind = sys.argv[1]
+        self.sender = sys.argv[3]
+
+        if self.kind == "MSG":
+            self.sticky = False
+            self.kind = sys.argv[2]
+            self.text = self.get_text(sys.argv[4])
+            # get the name differently for MUC
+            if self.kind == "MUC":
+                rx = re.compile(r"(^<[^>]+>) (.+$)")
+                mg = rx.match(self.text)
+                if mg:
+                    self.sender = mg.group(1)[1:-1]
+                    self.text = mg.group(2)
+
+                if self.sender == my_name:
+                    return
+
+        elif self.kind == "STATUS":
+            self.text = sys.argv[2]
+
+        handler.process_events(self)
+
+    def get_text(self, filename):
+        msg = ""
+        with open(filename, "r") as f:
+            msg = f.read()
+        try:
+            remove(filename)
+        except OSError:
+            pass
+        return msg
+
+
+'''
+    MESSAGE HANDLERS -
+
+    This is where you define individual handlers for incoming messages.
+    Each message handler is marked by the @handler decorator, and receives
+    the message object as an input parameter.
+'''
+
+
+@handler()
+def debugger(message):
+    if debug:
+        mini(message.args, title="Debug", applicationName="mcabber")
+
+
+@handler(['STATUS'])
+def status_change(message):
+    states = {
+            "o": "came online",
+            "f": "is free for chat",
+            "d": "do not disturb",
+            "n": "is not available",
+            "a": "went away",
+            "_": "went offline",
+        }
+    msg = states[message.text]
+    title = message.sender
+    image = open('%s/info_icon.png' % icon_dir, 'rb').read()
+    mini(msg, title=title, applicationName="mcabber",
+            notificationIcon=image)
+
+@handler(['IN', 'MUC'])
+def sticky_mentions(message):
+    if re.search(my_name.lower(), message.text):
+        system("say -v Vicki " + my_name + ", you have a new mention.")
+        message.sticky = True
+
+@handler(['IN'])
+def initial(message):
+    if re.search(r'\b(hello|hey|there?|Hey|Hi|Hello|Morning|yo|Danny|morning|afternoon|evening|danny|hi|howdy|question|problem|ping|Ping)\b', message.text):
+        system("say -v Vicki " + my_name + "?  New important message from " + message.sender.partition("@")[0].partition(".")[0].partition(" ")[0])
+        message.sticky = True
+        HOST = "smtp.gmail.com"
+        server = smtplib.SMTP(HOST)
+        server.starttls()
+        server.login(gmail_user, gmail_pass)
+        SUBJECT = "[MCABBER ALERT]: " + message.sender.partition("@")[0].partition(".")[0] + " has a message for you."
+        TO = gmail_user
+        FROM = gmail_from
+        text = message.text
+        BODY = string.join((
+                "From: %s" % FROM,
+                "To: %s" % TO,
+                "Subject: %s" % SUBJECT ,
+                "",
+                text
+                ), "\r\n")
+        server.sendmail(FROM, TO, BODY)
+        server.quit()
+
+@handler(['MUC'])
+def urgent(message):
+    if re.search(r'\b(danny??|Danny|danny here|where\'s danny)\b', message.text):
+        message.sticky = True
+        HOST = "smtp.gmail.com"
+        server = smtplib.SMTP(HOST)
+        server.starttls()
+        server.login(gmail_user, gmail_pass)
+        SUBJECT = "[MCABBER ALERT]: " + message.sender.partition("@")[0].partition(".")[0] + " has an urgent chatroom message."
+        TO = gmail_user
+        FROM = gmail_from
+        text = message.text
+        BODY = string.join((
+                "From: %s" % FROM,
+                "To: %s" % TO,
+                "Subject: %s" % SUBJECT ,
+                "",
+                text
+                ), "\r\n")
+        matches = re.findall(r'(gauntlet)', message.sender)
+        if not matches:
+            system("say -v Vicki " + my_name + ". Urgent chatroom message from " + message.sender.partition("@")[0].partition(".")[0].partition(" ")[0])
+            server.sendmail(FROM, TO, BODY)
+        server.quit()
+
+@handler(['IN', 'MUC'])
+def queue_up_links(message):
+    matches = re.findall(r'(https?://[^\s\>]+)', message.text)
+    for url in matches:
+        image = open('%s/url_icon.png' % icon_dir, 'rb').read()
+        mini(url, title="Open URL?", applicationName="mcabber",
+                notificationIcon=image, sticky=True, callback=url)
+
+@handler(['IN'])
+def growl(message):
+    ''' Growl notifications '''
+    image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
+    mini(message.text, title=message.sender, applicationName="mcabber",
+            notificationIcon=image, sticky=message.sticky)
+
+@handler(['MUC'])
+def growl(message):
+    ''' Growl notifications '''
+    image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
+    if re.search(r'\b(FAILURE in)\b', message.text):
+        talk_array = ["Oh no " + my_name + ", the build appears to have failed",
+                      "Shit " + my_name + ". The build is broken.",
+                      "Oh fuck. The build has failed.",
+                      "I hope you were not too attached to the build. It is broken now.",
+                      "Oh boy. The build is broken. I wonder who broke it."]
+        system("say -v Vicki " + random.choice(talk_array))
+    mini(message.text, title="[MUC] " + message.sender, applicationName="mcabber",
+            notificationIcon=image, sticky=message.sticky)
+
+@handler(['IN', 'MUC'])
+def for_the_lulz(message):
+    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+    if re.search(r'\b([ha]{3,}|lol)\b', message.text):
+        talk_array = ["say -v Hysterical lol",
+                      "say -v Vicki " + person + " thought that was pretty funny.",
+                      "say -v Vicki Look " + my_name + " ..." + person + " is laughing. I love it when people laugh, as i can not."]
+        system(random.choice(talk_array))
+    if re.search(r'\bandroid\b', message.text):
+        system("say -v Cellos droid")
+    if re.search(r'\b(i think|i\'m thinking)\b', message.text):
+        talk_array = ["hey " + my_name + ". " + person + " is trying to think. Isnt that cute",
+                      "uh oh " + my_name + ". " + person + " is thinking again. We are doomed.",
+                      "i hope " + person + " does not hurt himself with all this thinking."]
+        system("say -v Vicki " + random.choice(talk_array))
+    if re.search(r'\b(shit|fuck|damn|bitch|cunt|ass|fucking|damnit|bitching|asshole)\b', message.text):
+        talk_array = [person + " has a dirty mouth. A dirty, filthy mouth.",
+                      "I am offended by all this profanity.",
+                      "Why all the cursing " + my_name + " ...  It hurts my computer ears.",
+                      "Shit, fuck, cunt. It is all you people seem to say sometimes.",
+                      "Fuck!",
+                      "Eloquent " + person + ". Really nice.",
+                      "Can not you humans emote withou resorting to profanity?"]
+        system("say -v Vicki " + random.choice(talk_array))
+    if re.search(r'\b(idiot|stupid|jerk|hate|asshole)\b', message.text):
+        talk_array = ["Geez, " + my_name + ". You could cut the tension in here with a knife.",
+                      "Why is " + person + " so upset, " + my_name + "?",
+                      "Can we not all just get along?",
+                      "Life is too short for all of this negativity."]
+        system("say -v Vicki " + random.choice(talk_array))
+    if re.search(r'\b(love|favorite|loving|hilarious)\b', message.text):
+        talk_array = ["Theres a whole lot of love in this room right now " + my_name + ". A lot of love. Indeed.",
+                      "I really like how much love " + person + " is showing right now. It gives me faith. in humanity.",
+                      "Love is so important.  Though I am a computer, it is a concept that I do indeed grasp.",
+                      person + " seems to be very excited right now.",
+                      "I feel very happy by this conversation."]
+        system("say -v Vicki " + random.choice(talk_array))
+
+Message()
