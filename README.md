@@ -1,9 +1,9 @@
-vicky
+vicki
 =====
 
 an eventcmd script for mcabber.
 
-Vicky adds a few nice things to mcabber private messages and group chat:
+Vicki adds a few nice things to mcabber private messages and group chat:
 
 # Integrate growl notifications
     - sticky URLs if someone shares a URL
