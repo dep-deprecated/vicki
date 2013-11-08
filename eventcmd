@@ -15,15 +15,15 @@ from os import remove, system
 from gntp.notifier import mini
 
 import logging  # this is necessary to handle GNTP errors
-logging.basicConfig(level=logging.ERROR)
-
+logging.basicConfig(level=logging.INFO)
 
 '''
     CONFIG -
     Set global values here
 '''
 debug = False
-my_name = "dep"
+my_name = "Danny"
+my_nick = "dep"
 gmail_user = "dannypeck@gmail.com"
 gmail_from = "dannypeck+alert@gmail.com"
 gmail_pass = "gmailpassword"
@@ -117,7 +117,6 @@ def debugger(message):
     if debug:
         mini(message.args, title="Debug", applicationName="mcabber")
 
-
 @handler(['STATUS'])
 def status_change(message):
     states = {
@@ -143,13 +142,14 @@ def sticky_mentions(message):
 @handler(['IN'])
 def initial(message):
     if re.search(r'\b(hello|hey|there?|Hey|Hi|Hello|Morning|yo|Danny|morning|afternoon|evening|danny|hi|howdy|question|problem|ping|Ping)\b', message.text):
-        system("say -v Vicki " + my_name + "?  New important message from " + message.sender.partition("@")[0].partition(".")[0].partition(" ")[0])
+        person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+        system("say -v Vicki " + my_name + "?  New important message from " + person)
         message.sticky = True
         HOST = "smtp.gmail.com"
         server = smtplib.SMTP(HOST)
         server.starttls()
         server.login(gmail_user, gmail_pass)
-        SUBJECT = "[MCABBER ALERT]: " + message.sender.partition("@")[0].partition(".")[0] + " has a message for you."
+        SUBJECT = "[MCABBER ALERT]: " + person + " has a message for you."
         TO = gmail_user
         FROM = gmail_from
         text = message.text
@@ -171,7 +171,8 @@ def urgent(message):
         server = smtplib.SMTP(HOST)
         server.starttls()
         server.login(gmail_user, gmail_pass)
-        SUBJECT = "[MCABBER ALERT]: " + message.sender.partition("@")[0].partition(".")[0] + " has an urgent chatroom message."
+        person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+        SUBJECT = "[MCABBER ALERT]: " + person + " has an urgent chatroom message."
         TO = gmail_user
         FROM = gmail_from
         text = message.text
@@ -184,75 +185,85 @@ def urgent(message):
                 ), "\r\n")
         matches = re.findall(r'(gauntlet)', message.sender)
         if not matches:
-            system("say -v Vicki " + my_name + ". Urgent chatroom message from " + message.sender.partition("@")[0].partition(".")[0].partition(" ")[0])
+            person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+            system("say -v Vicki " + my_name + ". Urgent chatroom message from " + person)
             server.sendmail(FROM, TO, BODY)
         server.quit()
 
 @handler(['IN', 'MUC'])
 def queue_up_links(message):
     matches = re.findall(r'(https?://[^\s\>]+)', message.text)
+    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
     for url in matches:
+        system("say -v Vicki " + person + " just shared a link.")
         image = open('%s/url_icon.png' % icon_dir, 'rb').read()
         mini(url, title="Open URL?", applicationName="mcabber",
                 notificationIcon=image, sticky=True, callback=url)
 
 @handler(['IN'])
 def growl(message):
-    ''' Growl notifications '''
     image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
-    mini(message.text, title=message.sender, applicationName="mcabber",
+    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+    mini(message.text, title=person, applicationName="mcabber",
             notificationIcon=image, sticky=message.sticky)
 
 @handler(['MUC'])
 def growl(message):
-    ''' Growl notifications '''
     image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
+    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+    mini(message.text, title="[MUC] " + person, applicationName="mcabber",
+            notificationIcon=image, sticky=message.sticky)
     if re.search(r'\b(FAILURE in)\b', message.text):
-        talk_array = ["Oh no " + my_name + ", the build appears to have failed",
-                      "Shit " + my_name + ". The build is broken.",
+        talk_array = ["Oh no "+ my_nick +", the build appears to have failed",
+                      "Shit "+ my_nick +". The build is broken.",
                       "Oh fuck. The build has failed.",
                       "I hope you were not too attached to the build. It is broken now.",
                       "Oh boy. The build is broken. I wonder who broke it."]
+    if re.search(r'\b(FAILING)\b', message.text):
+        talk_array = ["Damn it "+ my_nick +", the build is still broken.",
+                      "The build is still broken.",
+                      "Oh fuck. The build has not been fixed yet.",
+                      "I wonder if the build will ever be working again. I am starting to have my doubts."]
+    if re.search(r'\b(FIXED)\b', message.text):
+        talk_array = ["Oh fuck yes. The build is fixed.",
+                      "Rejoice my young friend. The build is no longer broken.",
+                      "Hey "+ my_nick +". Lets celebrate. Someone fixed the build.",
+                      "What a glorious day this is turning out to be. The build is no longer broken.",
+                      "I was wondering if the build would ever be working again. I had some doubts, but they have been assuaged."]
         system("say -v Vicki " + random.choice(talk_array))
-    mini(message.text, title="[MUC] " + message.sender, applicationName="mcabber",
-            notificationIcon=image, sticky=message.sticky)
 
 @handler(['IN', 'MUC'])
 def for_the_lulz(message):
     person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-    if re.search(r'\b([ha]{3,}|lol)\b', message.text):
-        talk_array = ["say -v Hysterical lol",
-                      "say -v Vicki " + person + " thought that was pretty funny.",
-                      "say -v Vicki Look " + my_name + " ..." + person + " is laughing. I love it when people laugh, as i can not."]
-        system(random.choice(talk_array))
     if re.search(r'\bandroid\b', message.text):
         system("say -v Cellos droid")
+    if re.search(r'\b([ha]{3,}|lol)\b', message.text):
+        system("say -v Hysterical lol")
+        talk_array = [person + " thought that was pretty funny.",
+                      "Look "+ my_nick +" ..." + person + " is laughing. I love it when people laugh, for i can not."]
     if re.search(r'\b(i think|i\'m thinking)\b', message.text):
-        talk_array = ["hey " + my_name + ". " + person + " is trying to think. Isnt that cute",
-                      "uh oh " + my_name + ". " + person + " is thinking again. We are doomed.",
+        talk_array = ["hey "+ my_nick +". " + person + " is trying to think. Isnt that cute",
+                      "uh oh "+ my_nick +". " + person + " is thinking again. We are doomed.",
                       "i hope " + person + " does not hurt himself with all this thinking."]
-        system("say -v Vicki " + random.choice(talk_array))
     if re.search(r'\b(shit|fuck|damn|bitch|cunt|ass|fucking|damnit|bitching|asshole)\b', message.text):
         talk_array = [person + " has a dirty mouth. A dirty, filthy mouth.",
                       "I am offended by all this profanity.",
-                      "Why all the cursing " + my_name + " ...  It hurts my computer ears.",
+                      "Why all the cursing "+ my_nick +" ...  It hurts my computer ears.",
                       "Shit, fuck, cunt. It is all you people seem to say sometimes.",
                       "Fuck!",
                       "Eloquent " + person + ". Really nice.",
                       "Can not you humans emote withou resorting to profanity?"]
-        system("say -v Vicki " + random.choice(talk_array))
     if re.search(r'\b(idiot|stupid|jerk|hate|asshole)\b', message.text):
-        talk_array = ["Geez, " + my_name + ". You could cut the tension in here with a knife.",
-                      "Why is " + person + " so upset, " + my_name + "?",
+        talk_array = ["Geez, "+ my_nick +". You could cut the tension in here with a knife. It is palpable.",
+                      "Why is " + person + " so upset "+ my_nick +"? Even though I am a computer, I do understand the concept of how short life is. My computations tell me that life is too short to complicate it with unnecessary negativity.",
                       "Can we not all just get along?",
                       "Life is too short for all of this negativity."]
-        system("say -v Vicki " + random.choice(talk_array))
     if re.search(r'\b(love|favorite|loving|hilarious)\b', message.text):
-        talk_array = ["Theres a whole lot of love in this room right now " + my_name + ". A lot of love. Indeed.",
+        talk_array = ["Theres a whole lot of love in this room right now "+ my_nick +". A lot of love. Indeed.",
                       "I really like how much love " + person + " is showing right now. It gives me faith. in humanity.",
                       "Love is so important.  Though I am a computer, it is a concept that I do indeed grasp.",
                       person + " seems to be very excited right now.",
                       "I feel very happy by this conversation."]
-        system("say -v Vicki " + random.choice(talk_array))
+    system("say -v Vicki " + random.choice(talk_array))
 
 Message()
