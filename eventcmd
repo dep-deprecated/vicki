@@ -230,6 +230,11 @@ def growl(message):
                       "Hey "+ my_nick +". Lets celebrate. Someone fixed the build.",
                       "What a glorious day this is turning out to be. The build is no longer broken.",
                       "I was wondering if the build would ever be working again. I had some doubts, but they have been assuaged."]
+    try:
+        talk_array
+    except NameError:
+        print "well, it WASN'T defined after all!"
+    else:
         system("say -v Vicki " + random.choice(talk_array))
 
 @handler(['IN', 'MUC'])
@@ -264,6 +269,11 @@ def for_the_lulz(message):
                       "Love is so important.  Though I am a computer, it is a concept that I do indeed grasp.",
                       person + " seems to be very excited right now.",
                       "I feel very happy by this conversation."]
-    system("say -v Vicki " + random.choice(talk_array))
+    try:
+        talk_array
+    except NameError:
+        print "well, it WASN'T defined after all!"
+    else:
+        system("say -v Vicki " + random.choice(talk_array))
 
 Message()
