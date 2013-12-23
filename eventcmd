@@ -217,6 +217,7 @@ def growl(message):
         talk_array = ["Oh no "+ my_nick +", the build appears to have failed",
                       "Shit "+ my_nick +". The build is broken.",
                       "Oh fuck. The build has failed.",
+                      "Failure.",
                       "I hope you were not too attached to the build. It is broken now.",
                       "Oh boy. The build is broken. I wonder who broke it."]
     if re.search(r'\b(FAILING)\b', message.text):
@@ -224,6 +225,15 @@ def growl(message):
                       "The build is still broken.",
                       "Oh fuck. The build has not been fixed yet.",
                       "I wonder if the build will ever be working again. I am starting to have my doubts."]
+    if re.search(r'\b(SUCCESS)\b', message.text):
+        talk_array = ["Oh fuck yes.",
+                      "Rejoice.",
+                      "Yay.",
+                      "Oh happy day.",
+                      "One happy build.",
+                      "Success.",
+                      "Win.",
+                      "What a glorious day."]
     if re.search(r'\b(FIXED)\b', message.text):
         talk_array = ["Oh fuck yes. The build is fixed.",
                       "Rejoice my young friend. The build is no longer broken.",
@@ -233,7 +243,7 @@ def growl(message):
     try:
         talk_array
     except NameError:
-        print "well, it WASN'T defined after all!"
+        print "nothing to say about MUC."
     else:
         system("say -v Vicki " + random.choice(talk_array))
 
@@ -245,11 +255,21 @@ def for_the_lulz(message):
     if re.search(r'\b([ha]{3,}|lol)\b', message.text):
         system("say -v Hysterical lol")
         talk_array = [person + " thought that was pretty funny.",
-                      "Look "+ my_nick +" ..." + person + " is laughing. I love it when people laugh, for i can not."]
+                      "Look "+ my_nick +" ..." + person + " is laughing. I love it when people laugh, for i can not.",
+                      "That was a good one.",
+                      "So funny.",
+                      "The humor.",
+                      "You are all so very funny.",
+                      "Humor. I get it.",
+                      "Oh a joke. I like jokes.",
+                      "That must be an inside joke.",
+                      "Hilarious.",
+                      "Ha ha ha."]
     if re.search(r'\b(i think|i\'m thinking)\b', message.text):
         talk_array = ["hey "+ my_nick +". " + person + " is trying to think. Isnt that cute",
                       "uh oh "+ my_nick +". " + person + " is thinking again. We are doomed.",
-                      "i hope " + person + " does not hurt himself with all this thinking."]
+                      "i hope " + person + " does not hurt himself with all this thinking.",
+                      "I do not care what " + person + " thinks."]
     if re.search(r'\b(shit|fuck|damn|bitch|cunt|ass|fucking|damnit|bitching|asshole)\b', message.text):
         talk_array = [person + " has a dirty mouth. A dirty, filthy mouth.",
                       "I am offended by all this profanity.",
@@ -260,19 +280,24 @@ def for_the_lulz(message):
                       "Can not you humans emote withou resorting to profanity?"]
     if re.search(r'\b(idiot|stupid|jerk|hate|asshole)\b', message.text):
         talk_array = ["Geez, "+ my_nick +". You could cut the tension in here with a knife. It is palpable.",
-                      "Why is " + person + " so upset "+ my_nick +"? Even though I am a computer, I do understand the concept of how short life is. My computations tell me that life is too short to complicate it with unnecessary negativity.",
+                      "Why is " + person + " so upset "+ my_nick +"? Life is too short to complicate it with such unnecessary negativity.",
                       "Can we not all just get along?",
                       "Life is too short for all of this negativity."]
+    if re.search(r'\b(thank you|thanks)\b', message.text):
+        talk_array = ["You are welcome.",
+                      "Do not mention it " + person + "",
+                      "Aint no thang but a chicken wang.",
+                      "de nada."]
     if re.search(r'\b(love|favorite|loving|hilarious)\b', message.text):
         talk_array = ["Theres a whole lot of love in this room right now "+ my_nick +". A lot of love. Indeed.",
                       "I really like how much love " + person + " is showing right now. It gives me faith. in humanity.",
-                      "Love is so important.  Though I am a computer, it is a concept that I do indeed grasp.",
+                      "Love is so important.  Though I am not human, it is a concept that I do indeed grasp.",
                       person + " seems to be very excited right now.",
                       "I feel very happy by this conversation."]
     try:
         talk_array
     except NameError:
-        print "well, it WASN'T defined after all!"
+        print "nothing to say about PMs"
     else:
         system("say -v Vicki " + random.choice(talk_array))
 
