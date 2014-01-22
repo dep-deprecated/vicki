@@ -22,12 +22,12 @@ logging.basicConfig(level=logging.INFO)
     Set global values here
 '''
 debug = False
-my_name = "Danny"
-my_nick = "dep"
-gmail_user = "dannypeck@gmail.com"
-gmail_from = "dannypeck+alert@gmail.com"
+my_name = "yourname"
+my_nick = "yournick"
+gmail_user = "someuser@gmail.com"
+gmail_from = "someuser+alert@gmail.com"
 gmail_pass = "gmailpassword"
-icon_dir = "/Users/dannypeck/.mcabber/icons"
+icon_dir = "~/.mcabber/icons"
 
 '''
     Main functionality -
@@ -141,7 +141,7 @@ def sticky_mentions(message):
 
 @handler(['IN'])
 def initial(message):
-    if re.search(r'\b(hello|hey|there?|Hey|Hi|Hello|Morning|yo|Danny|morning|afternoon|evening|danny|hi|howdy|question|problem|ping|Ping)\b', message.text):
+    if re.search(my_name.lower(), message.text.lower()) or re.search(r'\b(hello|hey|there?|hi|morning|yo|afternoon|evening|howdy|question|problem|ping)\b', message.text.lower()):
         person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
         system("say -v Vicki " + my_name + "?  New important message from " + person)
         message.sticky = True
@@ -165,7 +165,7 @@ def initial(message):
 
 @handler(['MUC'])
 def urgent(message):
-    if re.search(r'\b(danny??|Danny|danny here|where\'s danny)\b', message.text):
+    if re.search(my_name.lower(), message.text.lower()):
         message.sticky = True
         HOST = "smtp.gmail.com"
         server = smtplib.SMTP(HOST)
@@ -247,12 +247,24 @@ def growl(message):
     else:
         system("say -v Vicki " + random.choice(talk_array))
 
+@handler(['MUC'])
+def has_deployed(message):
+    if re.search(r'\b(Done activating release prod-ref)\b', message.text):
+        talk_array = ["hey "+ my_nick +". We just deployed code to production.",
+                      "A production push has been completed."]
+    try:
+        talk_array
+    except NameError:
+        print "nothing to say about PMs"
+    else:
+        system("say -v Vicki " + random.choice(talk_array))
+
 @handler(['IN', 'MUC'])
 def for_the_lulz(message):
     person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-    if re.search(r'\bandroid\b', message.text):
+    if re.search(r'\bandroid\b', message.text.lower()):
         system("say -v Cellos droid")
-    if re.search(r'\b([ha]{3,}|lol)\b', message.text):
+    if re.search(r'\b([ha]{3,}|lol)\b', message.text.lower()):
         system("say -v Hysterical lol")
         talk_array = [person + " thought that was pretty funny.",
                       "Look "+ my_nick +" ..." + person + " is laughing. I love it when people laugh, for i can not.",
@@ -265,12 +277,12 @@ def for_the_lulz(message):
                       "That must be an inside joke.",
                       "Hilarious.",
                       "Ha ha ha."]
-    if re.search(r'\b(i think|i\'m thinking)\b', message.text):
+    if re.search(r'\b(i think|i\'m thinking)\b', message.text.lower()):
         talk_array = ["hey "+ my_nick +". " + person + " is trying to think. Isnt that cute",
                       "uh oh "+ my_nick +". " + person + " is thinking again. We are doomed.",
                       "i hope " + person + " does not hurt himself with all this thinking.",
                       "I do not care what " + person + " thinks."]
-    if re.search(r'\b(shit|fuck|damn|bitch|cunt|ass|fucking|damnit|bitching|asshole)\b', message.text):
+    if re.search(r'\b(shit|fuck|damn|bitch|cunt|ass|fucking|damnit|bitching|asshole)\b', message.text.lower()):
         talk_array = [person + " has a dirty mouth. A dirty, filthy mouth.",
                       "I am offended by all this profanity.",
                       "Why all the cursing "+ my_nick +" ...  It hurts my computer ears.",
@@ -278,17 +290,17 @@ def for_the_lulz(message):
                       "Fuck!",
                       "Eloquent " + person + ". Really nice.",
                       "Can not you humans emote withou resorting to profanity?"]
-    if re.search(r'\b(idiot|stupid|jerk|hate|asshole)\b', message.text):
+    if re.search(r'\b(idiot|stupid|jerk|hate|asshole)\b', message.text.lower()):
         talk_array = ["Geez, "+ my_nick +". You could cut the tension in here with a knife. It is palpable.",
                       "Why is " + person + " so upset "+ my_nick +"? Life is too short to complicate it with such unnecessary negativity.",
                       "Can we not all just get along?",
                       "Life is too short for all of this negativity."]
-    if re.search(r'\b(thank you|thanks)\b', message.text):
+    if re.search(r'\b(thank you|thanks)\b', message.text.lower()):
         talk_array = ["You are welcome.",
                       "Do not mention it " + person + "",
                       "Aint no thang but a chicken wang.",
                       "de nada."]
-    if re.search(r'\b(love|favorite|loving|hilarious)\b', message.text):
+    if re.search(r'\b(love|favorite|loving|hilarious)\b', message.text.lower()):
         talk_array = ["Theres a whole lot of love in this room right now "+ my_nick +". A lot of love. Indeed.",
                       "I really like how much love " + person + " is showing right now. It gives me faith. in humanity.",
                       "Love is so important.  Though I am not human, it is a concept that I do indeed grasp.",
