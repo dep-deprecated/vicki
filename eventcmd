@@ -59,7 +59,6 @@ class MessageHandler(list):
 
 handler = MessageHandler()
 
-
 class Message(object):
 
     # member properties
@@ -103,6 +102,7 @@ class Message(object):
         return msg
 
 
+
 '''
     MESSAGE HANDLERS -
 
@@ -110,7 +110,27 @@ class Message(object):
     Each message handler is marked by the @handler decorator, and receives
     the message object as an input parameter.
 '''
-
+def send_message(person, message):
+    HOST = "smtp.gmail.com"
+    server = smtplib.SMTP(HOST)
+    server.starttls()
+    server.login(gmail_user, gmail_pass)
+    SUBJECT = "[MCABBER ALERT]: " + person + " has an urgent message."
+    TO = gmail_user
+    FROM = gmail_from
+    text = message.text
+    BODY = string.join((
+            "From: %s" % FROM,
+            "To: %s" % TO,
+            "Subject: %s" % SUBJECT ,
+            "",
+            text
+            ), "\r\n")
+    matches = re.findall(r'(gauntlet)', message.sender)
+    if not matches:
+        system("say -v Vicki " + my_name + ". New important message from " + person)
+        server.sendmail(FROM, TO, BODY)
+    server.quit()
 
 @handler()
 def debugger(message):
@@ -126,142 +146,33 @@ def status_change(message):
             "n": "is not available",
             "a": "went away",
             "_": "went offline",
-        }
+    }
     msg = states[message.text]
     title = message.sender
     image = open('%s/info_icon.png' % icon_dir, 'rb').read()
     mini(msg, title=title, applicationName="mcabber",
             notificationIcon=image)
 
+''' setting rules for private messages and group chats '''
 @handler(['IN', 'MUC'])
-def sticky_mentions(message):
-    if re.search(my_name.lower(), message.text):
-        system("say -v Vicki " + my_name + ", you have a new mention.")
-        message.sticky = True
-
-@handler(['IN'])
-def initial(message):
-    if re.search(my_name.lower(), message.text.lower()) or re.search(r'\b(hello|hey|there?|hi|morning|yo|afternoon|evening|howdy|question|problem|ping)\b', message.text.lower()):
-        person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-        system("say -v Vicki " + my_name + "?  New important message from " + person)
-        message.sticky = True
-        HOST = "smtp.gmail.com"
-        server = smtplib.SMTP(HOST)
-        server.starttls()
-        server.login(gmail_user, gmail_pass)
-        SUBJECT = "[MCABBER ALERT]: " + person + " has a message for you."
-        TO = gmail_user
-        FROM = gmail_from
-        text = message.text
-        BODY = string.join((
-                "From: %s" % FROM,
-                "To: %s" % TO,
-                "Subject: %s" % SUBJECT ,
-                "",
-                text
-                ), "\r\n")
-        server.sendmail(FROM, TO, BODY)
-        server.quit()
-
-@handler(['MUC'])
-def urgent(message):
-    if re.search(my_name.lower(), message.text.lower()):
-        message.sticky = True
-        HOST = "smtp.gmail.com"
-        server = smtplib.SMTP(HOST)
-        server.starttls()
-        server.login(gmail_user, gmail_pass)
-        person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-        SUBJECT = "[MCABBER ALERT]: " + person + " has an urgent chatroom message."
-        TO = gmail_user
-        FROM = gmail_from
-        text = message.text
-        BODY = string.join((
-                "From: %s" % FROM,
-                "To: %s" % TO,
-                "Subject: %s" % SUBJECT ,
-                "",
-                text
-                ), "\r\n")
-        matches = re.findall(r'(gauntlet)', message.sender)
-        if not matches:
-            person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-            system("say -v Vicki " + my_name + ". Urgent chatroom message from " + person)
-            server.sendmail(FROM, TO, BODY)
-        server.quit()
-
-@handler(['IN', 'MUC'])
-def queue_up_links(message):
-    matches = re.findall(r'(https?://[^\s\>]+)', message.text)
+def process_messages(message):
+    ''' get sender '''
     person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+
+    ''' urls '''
+    matches = re.findall(r'(https?://[^\s\>]+)', message.text)
     for url in matches:
-        system("say -v Vicki " + person + " just shared a link.")
+        '''system("say -v Vicki " + person + " just shared a link.")'''
         image = open('%s/url_icon.png' % icon_dir, 'rb').read()
         mini(url, title="Open URL?", applicationName="mcabber",
                 notificationIcon=image, sticky=True, callback=url)
 
-@handler(['IN'])
-def growl(message):
-    image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
-    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-    mini(message.text, title=person, applicationName="mcabber",
-            notificationIcon=image, sticky=message.sticky)
+    ''' someone mentioned me '''
+    if re.search(my_name.lower(), message.text.lower()):
+        message.sticky = True
+        send_message(person, message);
 
-@handler(['MUC'])
-def growl(message):
-    image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
-    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
-    mini(message.text, title="[MUC] " + person, applicationName="mcabber",
-            notificationIcon=image, sticky=message.sticky)
-    if re.search(r'\b(FAILURE in)\b', message.text):
-        talk_array = ["Oh no "+ my_nick +", the build appears to have failed",
-                      "Shit "+ my_nick +". The build is broken.",
-                      "Oh fuck. The build has failed.",
-                      "Failure.",
-                      "I hope you were not too attached to the build. It is broken now.",
-                      "Oh boy. The build is broken. I wonder who broke it."]
-    if re.search(r'\b(FAILING)\b', message.text):
-        talk_array = ["Damn it "+ my_nick +", the build is still broken.",
-                      "The build is still broken.",
-                      "Oh fuck. The build has not been fixed yet.",
-                      "I wonder if the build will ever be working again. I am starting to have my doubts."]
-    if re.search(r'\b(SUCCESS)\b', message.text):
-        talk_array = ["Oh fuck yes.",
-                      "Rejoice.",
-                      "Yay.",
-                      "Oh happy day.",
-                      "One happy build.",
-                      "Success.",
-                      "Win.",
-                      "What a glorious day."]
-    if re.search(r'\b(FIXED)\b', message.text):
-        talk_array = ["Oh fuck yes. The build is fixed.",
-                      "Rejoice my young friend. The build is no longer broken.",
-                      "Hey "+ my_nick +". Lets celebrate. Someone fixed the build.",
-                      "What a glorious day this is turning out to be. The build is no longer broken.",
-                      "I was wondering if the build would ever be working again. I had some doubts, but they have been assuaged."]
-    try:
-        talk_array
-    except NameError:
-        print "nothing to say about MUC."
-    else:
-        system("say -v Vicki " + random.choice(talk_array))
-
-@handler(['MUC'])
-def has_deployed(message):
-    if re.search(r'\b(Done activating release prod-ref)\b', message.text):
-        talk_array = ["hey "+ my_nick +". We just deployed code to production.",
-                      "A production push has been completed."]
-    try:
-        talk_array
-    except NameError:
-        print "nothing to say about PMs"
-    else:
-        system("say -v Vicki " + random.choice(talk_array))
-
-@handler(['IN', 'MUC'])
-def for_the_lulz(message):
-    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+    ''' that was funny '''
     if re.search(r'\bandroid\b', message.text.lower()):
         system("say -v Cellos droid")
     if re.search(r'\b([ha]{3,}|lol)\b', message.text.lower()):
@@ -306,10 +217,68 @@ def for_the_lulz(message):
                       "Love is so important.  Though I am not human, it is a concept that I do indeed grasp.",
                       person + " seems to be very excited right now.",
                       "I feel very happy by this conversation."]
+    ''' emit '''
     try:
         talk_array
     except NameError:
         print "nothing to say about PMs"
+    else:
+        system("say -v Vicki " + random.choice(talk_array))
+
+''' setting rules for private messages '''
+@handler(['IN'])
+def handle_ins(message):
+    image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
+    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+    mini(message.text, title=person, applicationName="mcabber",
+            notificationIcon=image, sticky=message.sticky)
+
+    ''' hello? '''
+    if re.search(r'\b(hello|hey|there?|hi|morning|yo|afternoon|evening|howdy|question|problem|ping)\b', message.text.lower()):
+        message.sticky = True
+        send_message(person, message);
+
+''' setting rules for group chats only '''
+@handler(['MUC'])
+def process_muc(message):
+    image = open('%s/chat_icon.png' % icon_dir, 'rb').read()
+    person = message.sender.partition("@")[0].partition(".")[0].partition(" ")[0]
+    mini(message.text, title="[MUC] " + person, applicationName="mcabber",
+            notificationIcon=image, sticky=message.sticky)
+    if re.search(r'\b(FAILURE in)\b', message.text):
+        talk_array = ["Oh no "+ my_nick +", the build appears to have failed",
+                      "Shit "+ my_nick +". The build is broken.",
+                      "Oh fuck. The build has failed.",
+                      "Failure.",
+                      "I hope you were not too attached to the build. It is broken now.",
+                      "Oh boy. The build is broken. I wonder who broke it."]
+    if re.search(r'\b(FAILING)\b', message.text):
+        talk_array = ["Damn it "+ my_nick +", the build is still broken.",
+                      "The build is still broken.",
+                      "Oh fuck. The build has not been fixed yet.",
+                      "I wonder if the build will ever be working again. I am starting to have my doubts."]
+    if re.search(r'\b(SUCCESS in)\b', message.text):
+        talk_array = ["Oh fuck yes.",
+                      "Rejoice.",
+                      "Yay.",
+                      "Oh happy day.",
+                      "One happy build.",
+                      "Success.",
+                      "Win.",
+                      "What a glorious day."]
+    if re.search(r'\b(FIXED in)\b', message.text):
+        talk_array = ["Oh fuck yes. The build is fixed.",
+                      "Rejoice my young friend. The build is no longer broken.",
+                      "Hey "+ my_nick +". Lets celebrate. Someone fixed the build.",
+                      "What a glorious day this is turning out to be. The build is no longer broken.",
+                      "I was wondering if the build would ever be working again. I had some doubts, but they have been assuaged."]
+    if re.search(r'\b(Done activating release prod-ref)\b', message.text):
+        talk_array = ["hey "+ my_nick +". We just deployed code to production.",
+                      "A production push has been completed."]
+    try:
+        talk_array
+    except NameError:
+        print "nothing to say about MUCs"
     else:
         system("say -v Vicki " + random.choice(talk_array))
 
